@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: helpdeskhq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: helpdesk
+      POSTGRES_PASSWORD: helpdesk_dev_password
+      POSTGRES_DB: helpdeskhq
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helpdesk -d helpdeskhq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: helpdeskhq-api
+    restart: unless-stopped
+    ports:
+      - "5004:5004"
+    environment:
+      PORT: 5004
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: helpdesk
+      DB_PASSWORD: helpdesk_dev_password
+      DB_NAME: helpdeskhq
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your .env file}
+      JWT_EXPIRES_IN: 1d
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
